@@ -1,0 +1,1 @@
+# pi500-suse-setup
