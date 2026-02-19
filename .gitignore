@@ -1,0 +1,30 @@
+# --- macOS System Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Text Editor / IDE Temp Files ---
+# VS Code
+.vscode/
+*.code-workspace
+
+# Vim / Nano
+*.swp
+*~
+*.swo
+
+# JetBrains (IntelliJ, PyCharm, etc.)
+.idea/
+
+# --- General Temporary Files ---
+*.log
+*.bak
+*.tmp
+*.temp
+
+# --- Linux / Raspberry Pi Junk ---
+.fuse_hidden*
