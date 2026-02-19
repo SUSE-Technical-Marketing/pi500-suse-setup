@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=Skeuos-openSUSE-Dark
+Comment=Skeuos-openSUSE-Dark theme"
+Encoding=UTF-8
+
+
+[X-GNOME-Metatheme]
+GtkTheme=Skeuos-openSUSE-Dark
+MetacityTheme=Skeuos-openSUSE-Dark
+IconTheme=Flat-Remix-openSUSE-Dark
+CursorTheme=Adwaita
+ButtonLayout=:minimize,maximize,close
