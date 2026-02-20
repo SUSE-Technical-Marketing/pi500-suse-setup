@@ -3,6 +3,9 @@
 # ==============================================================================
 # RASPBERRY PI 500+ :: OPENSUSE-LIKE GNOME INSTALLER
 # Target OS: Raspberry Pi OS (Debian 13 Trixie)
+# Description: Installs GNOME, deploys pre-compiled openSUSE Skeuos themes,
+#              configures GTK4, applies openSUSE wallpapers, tweaks the bash 
+#              prompt, sets up Flatpak, and skins Plymouth & GDM3.
 # ==============================================================================
 
 set -e  # Exit immediately if a command exits with a non-zero status
@@ -12,7 +15,7 @@ GREEN='\033[1;32m'
 BLUE='\033[1;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
-TOTAL_STEPS=8
+TOTAL_STEPS=10
 
 # Get the absolute directory of where this script is running from
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,8 +34,14 @@ sudo apt install -y task-gnome-desktop gnome-tweaks gnome-shell-extensions \
                     papirus-icon-theme fonts-cantarell \
                     plymouth plymouth-themes git
 
-# 3. DEPLOY LOCAL THEMES
-echo -e "\n${BLUE}[3/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
+# 3. CONFIGURE FLATPAK & FLATHUB
+echo -e "\n${BLUE}[3/$TOTAL_STEPS] Setting up Flatpak and Flathub Integration...${NC}"
+sudo apt install -y flatpak gnome-software-plugin-flatpak
+# Add the Flathub repository if it doesn't already exist
+sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+# 4. DEPLOY LOCAL THEMES
+echo -e "\n${BLUE}[4/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
 mkdir -p ~/.themes
 mkdir -p ~/.icons
 
@@ -43,8 +52,8 @@ else
     echo -e "${YELLOW}>> WARNING: assets/suse-theme directory not found! Ensure it is in your git repo.${NC}"
 fi
 
-# 4. FETCH OFFICIAL OPENSUSE WALLPAPERS
-echo -e "\n${BLUE}[4/$TOTAL_STEPS] Fetching Official openSUSE Wallpapers...${NC}"
+# 5. FETCH OFFICIAL OPENSUSE WALLPAPERS
+echo -e "\n${BLUE}[5/$TOTAL_STEPS] Fetching Official openSUSE Wallpapers...${NC}"
 WALLPAPER_DIR="$HOME/Pictures/openSUSE-Wallpapers"
 if [ ! -d "$WALLPAPER_DIR" ]; then
     git clone https://github.com/openSUSE/wallpapers.git "$WALLPAPER_DIR"
@@ -53,8 +62,8 @@ else
     cd "$WALLPAPER_DIR" && git pull && cd - > /dev/null
 fi
 
-# 5. CONFIGURE GNOME & GTK4
-echo -e "\n${BLUE}[5/$TOTAL_STEPS] Applying GNOME Settings & Linking GTK4...${NC}"
+# 6. CONFIGURE GNOME & GTK4
+echo -e "\n${BLUE}[6/$TOTAL_STEPS] Applying GNOME Settings & Linking GTK4...${NC}"
 
 gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
 gsettings set org.gnome.desktop.interface font-name 'Cantarell 11'
@@ -78,8 +87,8 @@ ln -sf ~/.themes/Skeuos-openSUSE-Dark/gtk-4.0/assets ~/.config/gtk-4.0/assets
 ln -sf ~/.themes/Skeuos-openSUSE-Dark/gtk-4.0/gtk.css ~/.config/gtk-4.0/gtk.css
 ln -sf ~/.themes/Skeuos-openSUSE-Dark/gtk-4.0/gtk-dark.css ~/.config/gtk-4.0/gtk-dark.css
 
-# 6. CONFIGURE TERMINAL PROMPT
-echo -e "\n${BLUE}[6/$TOTAL_STEPS] Applying openSUSE Terminal Styling...${NC}"
+# 7. CONFIGURE TERMINAL PROMPT
+echo -e "\n${BLUE}[7/$TOTAL_STEPS] Applying openSUSE Terminal Styling...${NC}"
 if ! grep -q "1;32m" ~/.bashrc; then
     echo '' >> ~/.bashrc
     echo '# openSUSE-style terminal prompt' >> ~/.bashrc
@@ -87,9 +96,8 @@ if ! grep -q "1;32m" ~/.bashrc; then
     echo -e "${YELLOW}>> Prompt added to .bashrc${NC}"
 fi
 
-# 7. CONFIGURE PLYMOUTH BOOT SPLASH
-echo -e "\n${BLUE}[7/$TOTAL_STEPS] Installing openSUSE Boot Splash Screen...${NC}"
-# Download Plymouth theme directly to avoid missing local files
+# 8. CONFIGURE PLYMOUTH BOOT SPLASH
+echo -e "\n${BLUE}[8/$TOTAL_STEPS] Installing openSUSE Boot Splash Screen...${NC}"
 PLYMOUTH_TEMP="/tmp/plymouth-opensuse"
 if [ ! -d "/usr/share/plymouth/themes/opensuse-logo" ]; then
     echo -e "${YELLOW}>> Downloading Plymouth theme...${NC}"
@@ -106,12 +114,27 @@ if ! grep -q "splash" /boot/firmware/cmdline.txt; then
     sudo sed -i 's/$/ quiet splash/' /boot/firmware/cmdline.txt
 fi
 
-# 8. SET BOOT TARGET
-echo -e "\n${BLUE}[8/$TOTAL_STEPS] Setting Default Boot Target...${NC}"
+# 9. CONFIGURE LOGIN SCREEN (GDM3)
+echo -e "\n${BLUE}[9/$TOTAL_STEPS] Customizing GDM Login Screen...${NC}"
+# Spoof OS display name so it says openSUSE instead of Debian
+sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /usr/lib/os-release
+
+# Download and apply Geeko logo for the login prompt
+sudo wget -qO /usr/share/pixmaps/opensuse-logo.svg https://raw.githubusercontent.com/openSUSE/branding/master/logos/geeko/geeko-color.svg
+
+if ! grep -q "opensuse-logo.svg" /etc/gdm3/greeter.dconf-defaults; then
+    echo -e "${YELLOW}>> Injecting Geeko logo into GDM3...${NC}"
+    echo "" | sudo tee -a /etc/gdm3/greeter.dconf-defaults
+    echo "[org/gnome/login-screen]" | sudo tee -a /etc/gdm3/greeter.dconf-defaults
+    echo "logo='/usr/share/pixmaps/opensuse-logo.svg'" | sudo tee -a /etc/gdm3/greeter.dconf-defaults
+fi
+
+# 10. SET BOOT TARGET
+echo -e "\n${BLUE}[10/$TOTAL_STEPS] Setting Default Boot Target...${NC}"
 sudo systemctl set-default graphical.target
 
 # --- FINISH ---
 echo -e "\n${GREEN}======================================================${NC}"
 echo -e "${GREEN} [+] INSTALLATION COMPLETE!                           ${NC}"
 echo -e "${GREEN}======================================================${NC}"
-echo "Please reboot your Pi to see the new Plymouth splash and wallpaper."
+echo "Please reboot your Pi to load into your fully configured openSUSE environment."
