@@ -40,8 +40,8 @@ sudo apt install -y flatpak gnome-software-plugin-flatpak
 # Add the Flathub repository if it doesn't already exist
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 # Install StreamController
-echo -e "${YELLOW}>> Installing com.sore447.StreamController...${NC}"
-sudo flatpak install -y flathub com.sore447.StreamController
+echo -e "${YELLOW}>> Installing com.core447.StreamController...${NC}"
+sudo flatpak install -y flathub com.core447.StreamController
 
 # 4. DEPLOY LOCAL THEMES
 echo -e "\n${BLUE}[4/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
