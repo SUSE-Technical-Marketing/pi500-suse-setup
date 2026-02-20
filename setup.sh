@@ -41,11 +41,11 @@ sudo apt install -y flatpak gnome-software-plugin-flatpak
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 # Install StreamController
-echo -e "${YELLOW}>> Installing com.sore447.StreamController...${NC}"
-sudo flatpak install -y flathub com.sore447.StreamController
+echo -e "${YELLOW}>> Installing com.core447.StreamController...${NC}"
+sudo flatpak install -y flathub com.core447.StreamController
 
 # Restore StreamController Configuration
-SC_VAR_DIR="$HOME/.var/app/com.sore447.StreamController"
+SC_VAR_DIR="$HOME/.var/app/com.core447.StreamController"
 if [ -f "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" ]; then
     echo -e "${YELLOW}>> Restoring StreamController layouts and configuration...${NC}"
     mkdir -p "$SC_VAR_DIR"
