@@ -116,22 +116,31 @@ fi
 
 # 9. CONFIGURE LOGIN SCREEN (GDM3)
 echo -e "\n${BLUE}[9/$TOTAL_STEPS] Customizing GDM Login Screen...${NC}"
-# Spoof OS display name so it says openSUSE instead of Debian
-sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /usr/lib/os-release
 
-# Download and apply Geeko logo for the login prompt
-sudo wget -qO /usr/share/pixmaps/opensuse-logo.svg https://raw.githubusercontent.com/openSUSE/branding/master/logos/geeko/geeko-color.svg
+# Spoof OS display name (Try both standard Debian locations, ignore if they fail)
+sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /etc/os-release || true
+sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /usr/lib/os-release || true
 
-if ! grep -q "opensuse-logo.svg" /etc/gdm3/greeter.dconf-defaults; then
-    echo -e "${YELLOW}>> Injecting Geeko logo into GDM3...${NC}"
-    echo "" | sudo tee -a /etc/gdm3/greeter.dconf-defaults
-    echo "[org/gnome/login-screen]" | sudo tee -a /etc/gdm3/greeter.dconf-defaults
-    echo "logo='/usr/share/pixmaps/opensuse-logo.svg'" | sudo tee -a /etc/gdm3/greeter.dconf-defaults
+# Download Geeko logo (Ignore failure if the raw GitHub link is down)
+sudo wget -qO /usr/share/pixmaps/opensuse-logo.svg https://raw.githubusercontent.com/openSUSE/branding/master/logos/geeko/geeko-color.svg || true
+
+# Inject Geeko logo into GDM3 safely
+GDM_CONF="/etc/gdm3/greeter.dconf-defaults"
+if [ -d "/etc/gdm3" ]; then
+    sudo touch "$GDM_CONF" # Ensure the file exists before grepping
+    if ! grep -q "opensuse-logo.svg" "$GDM_CONF"; then
+        echo -e "${YELLOW}>> Injecting Geeko logo into GDM3...${NC}"
+        echo "" | sudo tee -a "$GDM_CONF" > /dev/null
+        echo "[org/gnome/login-screen]" | sudo tee -a "$GDM_CONF" > /dev/null
+        echo "logo='/usr/share/pixmaps/opensuse-logo.svg'" | sudo tee -a "$GDM_CONF" > /dev/null
+    fi
+else
+    echo -e "${YELLOW}>> WARNING: /etc/gdm3 directory not found. Skipping GDM theme...${NC}"
 fi
 
 # 10. SET BOOT TARGET
 echo -e "\n${BLUE}[10/$TOTAL_STEPS] Setting Default Boot Target...${NC}"
-sudo systemctl set-default graphical.target
+sudo systemctl set-default graphical.target || true
 
 # --- FINISH ---
 echo -e "\n${GREEN}======================================================${NC}"
