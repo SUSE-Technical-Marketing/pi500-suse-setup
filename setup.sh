@@ -76,14 +76,18 @@ else
     echo -e "${YELLOW}>> WARNING: assets/suse-theme directory not found! Ensure it is in your git repo.${NC}"
 fi
 
-# 5. FETCH OFFICIAL OPENSUSE WALLPAPERS
-echo -e "\n${BLUE}[5/$TOTAL_STEPS] Fetching Official openSUSE Wallpapers...${NC}"
+
+# 5. COPY OPENSUSE WALLPAPERS
+echo -e "\n${BLUE}[5/$TOTAL_STEPS] Copying openSUSE Wallpapers...${NC}"
 WALLPAPER_DIR="$HOME/Pictures/openSUSE-Wallpapers"
-if [ ! -d "$WALLPAPER_DIR" ]; then
-    git clone https://github.com/openSUSE/wallpapers.git "$WALLPAPER_DIR"
+
+if [ -d "$SCRIPT_DIR/assets/openSUSE-Wallpapers" ]; then
+    echo -e "${YELLOW}>> Copying locally stored wallpapers from assets...${NC}"
+    mkdir -p "$HOME/Pictures"
+    # Copy the whole folder over to the user's Pictures directory
+    cp -r "$SCRIPT_DIR/assets/openSUSE-Wallpapers" "$HOME/Pictures/"
 else
-    echo -e "${YELLOW}>> Wallpapers already exist, pulling latest changes...${NC}"
-    cd "$WALLPAPER_DIR" && git pull && cd - > /dev/null
+    echo -e "${YELLOW}>> WARNING: assets/openSUSE-Wallpapers directory not found in your repo!${NC}"
 fi
 
 # 6. CONFIGURE GNOME & GTK4
@@ -94,15 +98,20 @@ gsettings set org.gnome.desktop.interface font-name 'Cantarell 11'
 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 gsettings set org.gnome.desktop.interface gtk-theme 'Skeuos-openSUSE-Dark'
 
-# Handle the custom Hyprland Wallpaper
-TARGET_BG="$HOME/Pictures/hyprland-opensuse.png"
-if [ -f "$SCRIPT_DIR/assets/hyprland-opensuse.png" ]; then
-    echo -e "${YELLOW}>> Found custom wallpaper in assets. Applying it...${NC}"
-    cp "$SCRIPT_DIR/assets/hyprland-opensuse.png" "$TARGET_BG"
+# Handle the Wallpaper
+TARGET_BG="$WALLPAPER_DIR/hyprland-opensuse.png"
+FALLBACK_BG="$WALLPAPER_DIR/wallpapers/tumbleweed/default-1920x1080.jpg"
+
+if [ -f "$TARGET_BG" ]; then
+    echo -e "${YELLOW}>> Applying custom Hyprland wallpaper...${NC}"
     gsettings set org.gnome.desktop.background picture-uri "file://$TARGET_BG"
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$TARGET_BG"
+elif [ -f "$FALLBACK_BG" ]; then
+    echo -e "${YELLOW}>> Custom wallpaper not found. Applying default Tumbleweed background...${NC}"
+    gsettings set org.gnome.desktop.background picture-uri "file://$FALLBACK_BG"
+    gsettings set org.gnome.desktop.background picture-uri-dark "file://$FALLBACK_BG"
 else
-    echo -e "${YELLOW}>> WARNING: custom wallpaper not found in assets. Using default.${NC}"
+    echo -e "${YELLOW}>> WARNING: No valid wallpaper found to set. Leaving default.${NC}"
 fi
 
 echo -e "${YELLOW}>> Forcing Libadwaita (GTK4) apps to use the openSUSE theme...${NC}"
