@@ -26,11 +26,21 @@ echo -e "${GREEN}======================================================${NC}"
 
 # 1. SYSTEM UPDATE
 echo -e "\n${BLUE}[1/$TOTAL_STEPS] Updating System Repositories and Packages...${NC}"
-sudo apt update && sudo apt full-upgrade -y
+# Prevent apt from bringing up interactive prompts (like the Chromium config warning)
+export DEBIAN_FRONTEND=noninteractive
+sudo apt update && sudo apt full-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
 
 # 2. INSTALL REQUIRED PACKAGES
 echo -e "\n${BLUE}[2/$TOTAL_STEPS] Installing GNOME Desktop and Core Utilities...${NC}"
-sudo apt install -y task-gnome-desktop gnome-tweaks gnome-shell-extensions \
+echo -e "${YELLOW}>> Automatically configuring GDM3 as the default display manager...${NC}"
+
+# Pre-answer the pink display manager prompt so the user doesn't have to
+echo "shared/default-x-display-manager select gdm3" | sudo debconf-set-selections
+echo "gdm3 gdm3/daemon_name string /usr/sbin/gdm3" | sudo debconf-set-selections
+
+# Install all packages silently
+sudo apt install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+                    task-gnome-desktop gnome-tweaks gnome-shell-extensions \
                     papirus-icon-theme fonts-cantarell \
                     plymouth plymouth-themes git
 
