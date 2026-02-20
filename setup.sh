@@ -3,9 +3,6 @@
 # ==============================================================================
 # RASPBERRY PI 500+ :: OPENSUSE-LIKE GNOME INSTALLER
 # Target OS: Raspberry Pi OS (Debian 13 Trixie)
-# Description: Installs GNOME, deploys pre-compiled openSUSE Skeuos themes,
-#              configures GTK4, applies openSUSE wallpapers, tweaks the bash 
-#              prompt, and sets up a custom Plymouth boot splash.
 # ==============================================================================
 
 set -e  # Exit immediately if a command exits with a non-zero status
@@ -17,6 +14,9 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 TOTAL_STEPS=8
 
+# Get the absolute directory of where this script is running from
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo -e "${GREEN}======================================================${NC}"
 echo -e "${GREEN}   Starting openSUSE Workstation Setup for Pi 500+    ${NC}"
 echo -e "${GREEN}======================================================${NC}"
@@ -27,21 +27,20 @@ sudo apt update && sudo apt full-upgrade -y
 
 # 2. INSTALL REQUIRED PACKAGES
 echo -e "\n${BLUE}[2/$TOTAL_STEPS] Installing GNOME Desktop and Core Utilities...${NC}"
-echo -e "${YELLOW}>> This step will download several gigabytes. Grab a coffee!${NC}"
 sudo apt install -y task-gnome-desktop gnome-tweaks gnome-shell-extensions \
                     papirus-icon-theme fonts-cantarell \
                     plymouth plymouth-themes git
 
-# 3. DEPLOY LOCAL THEMES (From ./assets)
+# 3. DEPLOY LOCAL THEMES
 echo -e "\n${BLUE}[3/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
 mkdir -p ~/.themes
 mkdir -p ~/.icons
 
-if [ -d "assets/suse-theme" ]; then
-    cp -r assets/suse-theme/* ~/.themes/
+if [ -d "$SCRIPT_DIR/assets/suse-theme" ]; then
+    cp -r "$SCRIPT_DIR/assets/suse-theme"/* ~/.themes/
     echo -e "${YELLOW}>> Custom Skeuos themes copied successfully.${NC}"
 else
-    echo -e "${YELLOW}>> WARNING: assets/suse-theme directory not found! Skipping...${NC}"
+    echo -e "${YELLOW}>> WARNING: assets/suse-theme directory not found! Ensure it is in your git repo.${NC}"
 fi
 
 # 4. FETCH OFFICIAL OPENSUSE WALLPAPERS
@@ -57,20 +56,21 @@ fi
 # 5. CONFIGURE GNOME & GTK4
 echo -e "\n${BLUE}[5/$TOTAL_STEPS] Applying GNOME Settings & Linking GTK4...${NC}"
 
-# Use gsettings to apply the standard GTK3/GNOME parameters
 gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
 gsettings set org.gnome.desktop.interface font-name 'Cantarell 11'
 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 gsettings set org.gnome.desktop.interface gtk-theme 'Skeuos-openSUSE-Dark'
 
-# Pick a specific wallpaper from the cloned repo (e.g., Leap 15.4 default)
-TARGET_BG="$WALLPAPER_DIR/wallpapers/leap15.4/default-1920x1080.jpg"
+# Target the specific requested wallpaper
+TARGET_BG="$WALLPAPER_DIR/hyprland-opensuse.png"
 if [ -f "$TARGET_BG" ]; then
+    echo -e "${YELLOW}>> Setting wallpaper to $TARGET_BG...${NC}"
     gsettings set org.gnome.desktop.background picture-uri "file://$TARGET_BG"
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$TARGET_BG"
+else
+    echo -e "${YELLOW}>> WARNING: Wallpaper $TARGET_BG not found.${NC}"
 fi
 
-# Link GTK4 configuration so modern apps match the theme
 echo -e "${YELLOW}>> Forcing Libadwaita (GTK4) apps to use the openSUSE theme...${NC}"
 mkdir -p ~/.config/gtk-4.0
 rm -rf ~/.config/gtk-4.0/{assets,gtk.css,gtk-dark.css}
@@ -85,27 +85,25 @@ if ! grep -q "1;32m" ~/.bashrc; then
     echo '# openSUSE-style terminal prompt' >> ~/.bashrc
     echo 'export PS1="\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\]\$ "' >> ~/.bashrc
     echo -e "${YELLOW}>> Prompt added to .bashrc${NC}"
-else
-    echo -e "${YELLOW}>> Prompt styling already present in .bashrc${NC}"
 fi
 
 # 7. CONFIGURE PLYMOUTH BOOT SPLASH
 echo -e "\n${BLUE}[7/$TOTAL_STEPS] Installing openSUSE Boot Splash Screen...${NC}"
-if [ -d "assets/plymouth-opensuse/opensuse-logo" ]; then
-    # Copy theme to system directory
-    sudo cp -rv assets/plymouth-opensuse/opensuse-logo /usr/share/plymouth/themes/
-    
-    # Set default theme and rebuild initramfs
-    echo -e "${YELLOW}>> Rebuilding boot files (initramfs). This takes a moment...${NC}"
-    sudo plymouth-set-default-theme -R opensuse-logo
-    
-    # Ensure 'quiet' and 'splash' are in cmdline.txt for the splash screen to actually show
-    if ! grep -q "splash" /boot/firmware/cmdline.txt; then
-        echo -e "${YELLOW}>> Adding 'splash' to /boot/firmware/cmdline.txt...${NC}"
-        sudo sed -i 's/$/ quiet splash/' /boot/firmware/cmdline.txt
-    fi
-else
-    echo -e "${YELLOW}>> WARNING: assets/plymouth-opensuse/opensuse-logo not found! Skipping boot splash...${NC}"
+# Download Plymouth theme directly to avoid missing local files
+PLYMOUTH_TEMP="/tmp/plymouth-opensuse"
+if [ ! -d "/usr/share/plymouth/themes/opensuse-logo" ]; then
+    echo -e "${YELLOW}>> Downloading Plymouth theme...${NC}"
+    rm -rf "$PLYMOUTH_TEMP"
+    git clone https://github.com/serhiyguryev/plymouth-theme-opensuse.git "$PLYMOUTH_TEMP"
+    sudo cp -rv "$PLYMOUTH_TEMP/opensuse-logo" /usr/share/plymouth/themes/
+fi
+
+echo -e "${YELLOW}>> Rebuilding boot files (initramfs). This takes a moment...${NC}"
+sudo plymouth-set-default-theme -R opensuse-logo
+
+if ! grep -q "splash" /boot/firmware/cmdline.txt; then
+    echo -e "${YELLOW}>> Adding 'splash' to /boot/firmware/cmdline.txt...${NC}"
+    sudo sed -i 's/$/ quiet splash/' /boot/firmware/cmdline.txt
 fi
 
 # 8. SET BOOT TARGET
@@ -116,5 +114,4 @@ sudo systemctl set-default graphical.target
 echo -e "\n${GREEN}======================================================${NC}"
 echo -e "${GREEN} [+] INSTALLATION COMPLETE!                           ${NC}"
 echo -e "${GREEN}======================================================${NC}"
-echo "Everything from the GTK/GNOME skinning to the bootloader has been applied."
-echo "Please reboot your Pi to load into your new openSUSE-styled environment."
+echo "Please reboot your Pi to see the new Plymouth splash and wallpaper."
