@@ -4,8 +4,8 @@
 # RASPBERRY PI 500+ :: OPENSUSE-LIKE GNOME INSTALLER
 # Target OS: Raspberry Pi OS (Debian 13 Trixie)
 # Description: Installs GNOME, deploys pre-compiled openSUSE Skeuos themes,
-#              configures GTK4, applies openSUSE wallpapers, tweaks the bash 
-#              prompt, sets up Flatpak, and skins Plymouth & GDM3.
+#              configures GTK4, Flatpak, StreamController, Plymouth, GDM3,
+#              and sets the Pi 500+ keyboard to a breathing green backlight.
 # ==============================================================================
 
 set -e  # Exit immediately if a command exits with a non-zero status
@@ -15,7 +15,7 @@ GREEN='\033[1;32m'
 BLUE='\033[1;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
-TOTAL_STEPS=10
+TOTAL_STEPS=11
 
 # Get the absolute directory of where this script is running from
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,11 +34,14 @@ sudo apt install -y task-gnome-desktop gnome-tweaks gnome-shell-extensions \
                     papirus-icon-theme fonts-cantarell \
                     plymouth plymouth-themes git
 
-# 3. CONFIGURE FLATPAK & FLATHUB
-echo -e "\n${BLUE}[3/$TOTAL_STEPS] Setting up Flatpak and Flathub Integration...${NC}"
+# 3. CONFIGURE FLATPAK & INSTALL APPS
+echo -e "\n${BLUE}[3/$TOTAL_STEPS] Setting up Flatpak and installing StreamController...${NC}"
 sudo apt install -y flatpak gnome-software-plugin-flatpak
 # Add the Flathub repository if it doesn't already exist
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+# Install StreamController
+echo -e "${YELLOW}>> Installing com.sore447.StreamController...${NC}"
+sudo flatpak install -y flathub com.sore447.StreamController
 
 # 4. DEPLOY LOCAL THEMES
 echo -e "\n${BLUE}[4/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
@@ -70,14 +73,15 @@ gsettings set org.gnome.desktop.interface font-name 'Cantarell 11'
 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 gsettings set org.gnome.desktop.interface gtk-theme 'Skeuos-openSUSE-Dark'
 
-# Target the specific requested wallpaper
-TARGET_BG="$WALLPAPER_DIR/hyprland-opensuse.png"
-if [ -f "$TARGET_BG" ]; then
-    echo -e "${YELLOW}>> Setting wallpaper to $TARGET_BG...${NC}"
+# Handle the custom Hyprland Wallpaper
+TARGET_BG="$HOME/Pictures/hyprland-opensuse.png"
+if [ -f "$SCRIPT_DIR/assets/hyprland-opensuse.png" ]; then
+    echo -e "${YELLOW}>> Found custom wallpaper in assets. Applying it...${NC}"
+    cp "$SCRIPT_DIR/assets/hyprland-opensuse.png" "$TARGET_BG"
     gsettings set org.gnome.desktop.background picture-uri "file://$TARGET_BG"
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$TARGET_BG"
 else
-    echo -e "${YELLOW}>> WARNING: Wallpaper $TARGET_BG not found.${NC}"
+    echo -e "${YELLOW}>> WARNING: $SCRIPT_DIR/assets/hyprland-opensuse.png not found. Using default.${NC}"
 fi
 
 echo -e "${YELLOW}>> Forcing Libadwaita (GTK4) apps to use the openSUSE theme...${NC}"
@@ -116,30 +120,33 @@ fi
 
 # 9. CONFIGURE LOGIN SCREEN (GDM3)
 echo -e "\n${BLUE}[9/$TOTAL_STEPS] Customizing GDM Login Screen...${NC}"
-
-# Spoof OS display name (Try both standard Debian locations, ignore if they fail)
 sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /etc/os-release || true
 sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /usr/lib/os-release || true
-
-# Download Geeko logo (Ignore failure if the raw GitHub link is down)
 sudo wget -qO /usr/share/pixmaps/opensuse-logo.svg https://raw.githubusercontent.com/openSUSE/branding/master/logos/geeko/geeko-color.svg || true
 
-# Inject Geeko logo into GDM3 safely
 GDM_CONF="/etc/gdm3/greeter.dconf-defaults"
 if [ -d "/etc/gdm3" ]; then
-    sudo touch "$GDM_CONF" # Ensure the file exists before grepping
+    sudo touch "$GDM_CONF"
     if ! grep -q "opensuse-logo.svg" "$GDM_CONF"; then
         echo -e "${YELLOW}>> Injecting Geeko logo into GDM3...${NC}"
         echo "" | sudo tee -a "$GDM_CONF" > /dev/null
         echo "[org/gnome/login-screen]" | sudo tee -a "$GDM_CONF" > /dev/null
         echo "logo='/usr/share/pixmaps/opensuse-logo.svg'" | sudo tee -a "$GDM_CONF" > /dev/null
     fi
-else
-    echo -e "${YELLOW}>> WARNING: /etc/gdm3 directory not found. Skipping GDM theme...${NC}"
 fi
 
-# 10. SET BOOT TARGET
-echo -e "\n${BLUE}[10/$TOTAL_STEPS] Setting Default Boot Target...${NC}"
+# 10. CONFIGURE KEYBOARD BACKLIGHT
+echo -e "\n${BLUE}[10/$TOTAL_STEPS] Setting Pi 500+ Keyboard Backlight...${NC}"
+if command -v rpi-keyboard-config >/dev/null 2>&1; then
+    echo -e "${YELLOW}>> Setting to SUSE Green (Breathing)...${NC}"
+    # Adding || true so it doesn't halt the script if it requires sudo or fails
+    rpi-keyboard-config preset set 0 "Breathing" --hue 89 --sat 255 --speed 100 || true
+else
+    echo -e "${YELLOW}>> WARNING: rpi-keyboard-config tool not found. Skipping...${NC}"
+fi
+
+# 11. SET BOOT TARGET
+echo -e "\n${BLUE}[11/$TOTAL_STEPS] Setting Default Boot Target...${NC}"
 sudo systemctl set-default graphical.target || true
 
 # --- FINISH ---
