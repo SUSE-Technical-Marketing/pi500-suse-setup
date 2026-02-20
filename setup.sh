@@ -4,8 +4,8 @@
 # RASPBERRY PI 500+ :: OPENSUSE-LIKE GNOME INSTALLER
 # Target OS: Raspberry Pi OS (Debian 13 Trixie)
 # Description: Installs GNOME, deploys pre-compiled openSUSE Skeuos themes,
-#              configures GTK4, Flatpak, StreamController, Plymouth, GDM3,
-#              and sets the Pi 500+ keyboard to a breathing green backlight.
+#              configures GTK4, Flatpak, StreamController (with auto-config),
+#              Plymouth, GDM3, and sets the Pi 500+ keyboard backlight.
 # ==============================================================================
 
 set -e  # Exit immediately if a command exits with a non-zero status
@@ -37,11 +37,22 @@ sudo apt install -y task-gnome-desktop gnome-tweaks gnome-shell-extensions \
 # 3. CONFIGURE FLATPAK & INSTALL APPS
 echo -e "\n${BLUE}[3/$TOTAL_STEPS] Setting up Flatpak and installing StreamController...${NC}"
 sudo apt install -y flatpak gnome-software-plugin-flatpak
-# Add the Flathub repository if it doesn't already exist
+# Add the Flathub repository
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
 # Install StreamController
 echo -e "${YELLOW}>> Installing com.core447.StreamController...${NC}"
 sudo flatpak install -y flathub com.core447.StreamController
+
+# Restore StreamController Configuration
+SC_VAR_DIR="$HOME/.var/app/com.core447.StreamController"
+if [ -f "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" ]; then
+    echo -e "${YELLOW}>> Restoring StreamController layouts and configuration...${NC}"
+    mkdir -p "$SC_VAR_DIR"
+    tar -xzf "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
+else
+    echo -e "${YELLOW}>> No streamcontroller-config.tar.gz found in assets. Skipping restore...${NC}"
+fi
 
 # 4. DEPLOY LOCAL THEMES
 echo -e "\n${BLUE}[4/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
@@ -81,7 +92,7 @@ if [ -f "$SCRIPT_DIR/assets/hyprland-opensuse.png" ]; then
     gsettings set org.gnome.desktop.background picture-uri "file://$TARGET_BG"
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$TARGET_BG"
 else
-    echo -e "${YELLOW}>> WARNING: $SCRIPT_DIR/assets/hyprland-opensuse.png not found. Using default.${NC}"
+    echo -e "${YELLOW}>> WARNING: custom wallpaper not found in assets. Using default.${NC}"
 fi
 
 echo -e "${YELLOW}>> Forcing Libadwaita (GTK4) apps to use the openSUSE theme...${NC}"
@@ -139,7 +150,6 @@ fi
 echo -e "\n${BLUE}[10/$TOTAL_STEPS] Setting Pi 500+ Keyboard Backlight...${NC}"
 if command -v rpi-keyboard-config >/dev/null 2>&1; then
     echo -e "${YELLOW}>> Setting to SUSE Green (Breathing)...${NC}"
-    # Adding || true so it doesn't halt the script if it requires sudo or fails
     rpi-keyboard-config preset set 0 "Breathing" --hue 89 --sat 255 --speed 100 || true
 else
     echo -e "${YELLOW}>> WARNING: rpi-keyboard-config tool not found. Skipping...${NC}"
