@@ -90,6 +90,20 @@ zypper in -y fastfetch curl git bash-completion vim nano iputils wget \
              mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak \
              rancher-desktop
 
+# Clone repo to get assets (desktop images, StreamController defaults, etc.)
+REPO_DIR="/opt/pi500-suse-setup"
+if [ ! -d "$REPO_DIR/.git" ]; then
+    echo -e "${YELLOW}>> Cloning pi500-suse-setup repo for assets...${NC}"
+    git clone https://github.com/SUSE-Technical-Marketing/pi500-suse-setup.git "$REPO_DIR"
+else
+    echo -e "${YELLOW}>> Updating pi500-suse-setup repo...${NC}"
+    git -C "$REPO_DIR" pull
+fi
+# If running via curl, SCRIPT_DIR won't have local assets — use the cloned repo
+if [ ! -d "$SCRIPT_DIR/assets" ]; then
+    SCRIPT_DIR="$REPO_DIR"
+fi
+
 # ==============================================================================
 # 5. ARCHITECTURE-AWARE BINARIES (Kubectl, Helm, K9s)
 # ==============================================================================
