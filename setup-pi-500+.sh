@@ -92,6 +92,17 @@ zypper --gpg-auto-import-keys ref
 zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
              mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium
 
+# ==============================================================================
+# 4b. MULTIMEDIA CODECS (Packman)
+# ==============================================================================
+echo -e "${YELLOW}>> Adding Packman repo and installing media codecs...${NC}"
+zypper addrepo -cfp 90 https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Tumbleweed/ packman
+zypper --gpg-auto-import-keys ref
+# Switch multimedia packages to Packman builds (enables full codec support)
+zypper --gpg-auto-import-keys dup --from packman --allow-vendor-change -y
+zypper --gpg-auto-import-keys in -y ffmpeg gstreamer-plugins-bad gstreamer-plugins-ugly \
+             gstreamer-plugins-libav vlc
+
 # Clone repo to get assets (desktop images, StreamController defaults, etc.)
 REPO_DIR="/opt/pi500-suse-setup"
 if [ ! -d "$REPO_DIR/.git" ]; then
