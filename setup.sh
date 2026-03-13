@@ -18,8 +18,8 @@ NC='\033[0m'
 # ==============================================================================
 # Format: "username:password_hash"
 USERS=(
-    "erin:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0"
-    "sles:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0"
+    'erin:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0'
+    'sles:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0'
 )
 
 SSH_KEY_ERIN="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDrkMfTTDxPafXv+E1olBKCqu3ggaRGeitMaJ5iJHr588Bo2PcPY+xlM5iM1WITNBwUtdotxtIPVv25sijeEB4eCn4Sx/460FB9cbucGMUqZeeMZe++ibziT/5vyDQhIBwEpw3tm5qtd1rLJkdIbq6hyxbkH2lr8RKfEGA9CCCTFeX7CPHHsVx3KXoS2TDceVHEaMaNBSpT1wkUJ26WLnbjYIkeTI2tqWmS/zV2u8wE9hyWsKheXRL3P9Ams+n2t4UmjNb0Xs96hkjHbcl8Pa8dlrOOER9oINWblfbuJR28Q3vlPR/3yLC1JI9o/+Vq92aMRZiA2BMg+uC/vj18GnKwrSJQ1tEt4hnHxwTaMBjBhXuH6AJDL1LxwKMhP8iNHmke/VuIUcjtusRmpDGtVy/Jov506FAN9coWqg0DC7RojwvGaK8SSCHDV6XLZGXg5PuoyiagCRqGsp6Y5FUMtodNLEzvWe3yLS7gOLTEfoddZM9cn+u9jzQVgyqfjT9xUtc= erquill@Erins-MacBook-Pro-2.local"
