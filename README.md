@@ -35,6 +35,23 @@ After the script completes, reboot:
 sudo reboot
 ```
 
+## Updating Passwords
+
+To generate a new password hash for the `USERS` array in `setup-pi-500+.sh`, run:
+
+```bash
+openssl passwd -6
+```
+
+Enter and confirm your password when prompted. Copy the output hash into the script:
+
+```bash
+USERS=(
+    "erin:<paste hash here>"
+    "sles:<paste hash here>"
+)
+```
+
 ## Repo Structure
 
 ```

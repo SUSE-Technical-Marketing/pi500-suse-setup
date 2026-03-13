@@ -64,13 +64,17 @@ net.ipv6.conf.default.disable_ipv6 = 1
 EOF
 sysctl --system
 
-# GNOME Desktop Power Settings for all users
-for entry in "${USERS[@]}"; do
-    USERNAME="${entry%%:*}"
-    sudo -u "$USERNAME" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
-    sudo -u "$USERNAME" gsettings set org.gnome.desktop.session idle-delay 0
-    sudo -u "$USERNAME" gsettings set org.gnome.settings-daemon.plugins.power idle-dim false
-done
+# GNOME Desktop Power Settings (system-wide dconf policy — works without a display)
+mkdir -p /etc/dconf/db/local.d
+cat <<EOF > /etc/dconf/db/local.d/01-power-settings
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-type='nothing'
+idle-dim=false
+
+[org/gnome/desktop/session]
+idle-delay=uint32 0
+EOF
+dconf update
 
 # ==============================================================================
 # 3. GLOBAL BASH CUSTOMIZATION
@@ -149,8 +153,8 @@ tar -xzf k9s.tar.gz k9s && install -m 0755 k9s /usr/local/bin/k9s && rm k9s k9s.
 echo -e "${YELLOW}>> Configuring Flatpak and StreamController...${NC}"
 # TERM=dumb prevents flatpak's progress bar from sending terminal escape sequences
 # that get echoed as garbage when the script is piped via curl
-TERM=dumb flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-TERM=dumb flatpak install --system -y flathub com.core447.StreamController
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | cat
+flatpak install --system -y flathub com.core447.StreamController 2>&1 | cat
 
 for entry in "${USERS[@]}"; do
     USERNAME="${entry%%:*}"
