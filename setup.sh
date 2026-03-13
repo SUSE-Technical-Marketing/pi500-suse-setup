@@ -97,7 +97,16 @@ zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano 
              mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium
 
 # ==============================================================================
-# 4b. MULTIMEDIA CODECS (Packman)
+# 4b. VS CODE (Microsoft repo)
+# ==============================================================================
+echo -e "${YELLOW}>> Installing VS Code...${NC}"
+rpm --import https://packages.microsoft.com/keys/microsoft.asc
+zypper addrepo https://packages.microsoft.com/yumrepos/vscode vscode
+zypper --gpg-auto-import-keys ref
+zypper --gpg-auto-import-keys in -y code
+
+# ==============================================================================
+# 4c. MULTIMEDIA CODECS (Packman)
 # ==============================================================================
 echo -e "${YELLOW}>> Adding Packman repo and installing media codecs...${NC}"
 zypper addrepo -cfp 90 https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Tumbleweed/ packman

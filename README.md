@@ -9,6 +9,7 @@ Automated setup script for configuring a **Raspberry Pi 500** running **openSUSE
 - Applies kernel tuning for Kubernetes workloads
 - Disables IPv6 and configures GNOME power settings (no sleep/screensaver)
 - Installs core packages: `git`, `vim`, `curl`, `fastfetch`, `chromium`, `flatpak`, and more
+- Installs **VS Code** via the Microsoft repo
 - Adds the **Packman** repo and installs full multimedia codec support (H.264, MP3, AAC, etc.)
 - Downloads `kubectl`, `helm`, and `k9s` (architecture-aware, works on ARM64)
 - Installs **StreamController** via Flatpak and restores default config
@@ -37,7 +38,7 @@ sudo reboot
 
 ## Updating Passwords
 
-To generate a new password hash for the `USERS` array in `setup-pi-500+.sh`, run:
+To generate a new password hash for the `USERS` array in `setup.sh`, run:
 
 ```bash
 openssl passwd -6
@@ -56,7 +57,7 @@ USERS=(
 
 ```
 .
-├── setup-pi-500+.sh              # Main setup script
+├── setup.sh                            # Main setup script
 └── assets/
     └── streamcontroller-config.tar.gz  # Default StreamController layout
 ```
