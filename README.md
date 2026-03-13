@@ -26,7 +26,7 @@ Automated setup script for configuring a **Raspberry Pi 500** running **openSUSE
 ## Quick Start
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/SUSE-Technical-Marketing/pi500-suse-setup/main/setup-pi-500%2B.sh" | sudo bash
+curl -fsSL "https://raw.githubusercontent.com/SUSE-Technical-Marketing/pi500-suse-setup/main/setup.sh" | sudo bash
 ```
 
 After the script completes, reboot:

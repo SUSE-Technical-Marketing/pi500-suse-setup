@@ -1,185 +1,182 @@
 #!/bin/bash
 
-# ==============================================================================
-# RASPBERRY PI 500+ :: OPENSUSE-LIKE GNOME INSTALLER
-# Target OS: Raspberry Pi OS (Debian 13 Trixie)
-# Description: Installs GNOME, deploys pre-compiled openSUSE Skeuos themes,
-#              configures GTK4, Flatpak, StreamController (with auto-config),
-#              Plymouth, GDM3, and sets the Pi 500+ keyboard backlight.
-# ==============================================================================
+# --- openSUSE Raspberry Pi / StreamController Setup ---
+# Designed for openSUSE Tumbleweed on a Raspberry Pi (ARM64)
 
-set -e  # Exit immediately if a command exits with a non-zero status
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root (sudo)"
+  exit 1
+fi
 
-# --- Visual Output Formatting ---
-GREEN='\033[1;32m'
-BLUE='\033[1;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-TOTAL_STEPS=11
-
-# Get the absolute directory of where this script is running from
+# Set directory and colors
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-echo -e "${GREEN}======================================================${NC}"
-echo -e "${GREEN}   Starting openSUSE Workstation Setup for Pi 500+    ${NC}"
-echo -e "${GREEN}======================================================${NC}"
+# ==============================================================================
+# 1. USER CONFIGURATION & SUDOERS
+# ==============================================================================
+# Format: "username:password_hash"
+USERS=(
+    "erin:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0"
+    "sles:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0"
+)
 
-# 1. SYSTEM UPDATE
-echo -e "\n${BLUE}[1/$TOTAL_STEPS] Updating System Repositories and Packages...${NC}"
-# Prevent apt from bringing up interactive prompts (like the Chromium config warning)
-export DEBIAN_FRONTEND=noninteractive
-sudo apt update && sudo apt full-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+SSH_KEY_ERIN="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDrkMfTTDxPafXv+E1olBKCqu3ggaRGeitMaJ5iJHr588Bo2PcPY+xlM5iM1WITNBwUtdotxtIPVv25sijeEB4eCn4Sx/460FB9cbucGMUqZeeMZe++ibziT/5vyDQhIBwEpw3tm5qtd1rLJkdIbq6hyxbkH2lr8RKfEGA9CCCTFeX7CPHHsVx3KXoS2TDceVHEaMaNBSpT1wkUJ26WLnbjYIkeTI2tqWmS/zV2u8wE9hyWsKheXRL3P9Ams+n2t4UmjNb0Xs96hkjHbcl8Pa8dlrOOER9oINWblfbuJR28Q3vlPR/3yLC1JI9o/+Vq92aMRZiA2BMg+uC/vj18GnKwrSJQ1tEt4hnHxwTaMBjBhXuH6AJDL1LxwKMhP8iNHmke/VuIUcjtusRmpDGtVy/Jov506FAN9coWqg0DC7RojwvGaK8SSCHDV6XLZGXg5PuoyiagCRqGsp6Y5FUMtodNLEzvWe3yLS7gOLTEfoddZM9cn+u9jzQVgyqfjT9xUtc= erquill@Erins-MacBook-Pro-2.local"
 
-# 2. INSTALL REQUIRED PACKAGES
-echo -e "\n${BLUE}[2/$TOTAL_STEPS] Installing GNOME Desktop and Core Utilities...${NC}"
-echo -e "${YELLOW}>> Automatically configuring GDM3 as the default display manager...${NC}"
+echo -e "${YELLOW}>> Configuring Users and Sudo access...${NC}"
 
-# Pre-answer the pink display manager prompt so the user doesn't have to
-echo "shared/default-x-display-manager select gdm3" | sudo debconf-set-selections
-echo "gdm3 gdm3/daemon_name string /usr/sbin/gdm3" | sudo debconf-set-selections
+# Ensure wheel group exists before creating users
+groupadd -f wheel
 
-# Install all packages silently
-sudo apt install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-                    task-gnome-desktop gnome-tweaks gnome-shell-extensions \
-                    papirus-icon-theme fonts-cantarell \
-                    plymouth plymouth-themes git
+for entry in "${USERS[@]}"; do
+    USERNAME="${entry%%:*}"
+    HASH="${entry#*:}"
 
-# 3. CONFIGURE FLATPAK & INSTALL APPS
-echo -e "\n${BLUE}[3/$TOTAL_STEPS] Setting up Flatpak and installing StreamController...${NC}"
-sudo apt install -y flatpak gnome-software-plugin-flatpak
-# Add the Flathub repository
-sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-
-# Install StreamController
-echo -e "${YELLOW}>> Installing com.core447.StreamController...${NC}"
-sudo flatpak install -y flathub com.core447.StreamController
-
-# Restore StreamController Configuration
-SC_VAR_DIR="$HOME/.var/app/com.core447.StreamController"
-if [ -f "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" ]; then
-    echo -e "${YELLOW}>> Restoring StreamController layouts and configuration...${NC}"
-    mkdir -p "$SC_VAR_DIR"
-    tar -xzf "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
-else
-    echo -e "${YELLOW}>> No streamcontroller-config.tar.gz found in assets. Skipping restore...${NC}"
-fi
-
-# 4. DEPLOY LOCAL THEMES
-echo -e "\n${BLUE}[4/$TOTAL_STEPS] Deploying Pre-compiled openSUSE Themes...${NC}"
-mkdir -p ~/.themes
-mkdir -p ~/.icons
-
-if [ -d "$SCRIPT_DIR/assets/suse-theme" ]; then
-    cp -r "$SCRIPT_DIR/assets/suse-theme"/* ~/.themes/
-    echo -e "${YELLOW}>> Custom Skeuos themes copied successfully.${NC}"
-else
-    echo -e "${YELLOW}>> WARNING: assets/suse-theme directory not found! Ensure it is in your git repo.${NC}"
-fi
-
-
-# 5. COPY OPENSUSE WALLPAPERS
-echo -e "\n${BLUE}[5/$TOTAL_STEPS] Copying openSUSE Wallpapers...${NC}"
-WALLPAPER_DIR="$HOME/Pictures/openSUSE-Wallpapers"
-
-if [ -d "$SCRIPT_DIR/assets/openSUSE-Wallpapers" ]; then
-    echo -e "${YELLOW}>> Copying locally stored wallpapers from assets...${NC}"
-    mkdir -p "$HOME/Pictures"
-    # Copy the whole folder over to the user's Pictures directory
-    cp -r "$SCRIPT_DIR/assets/openSUSE-Wallpapers" "$HOME/Pictures/"
-else
-    echo -e "${YELLOW}>> WARNING: assets/openSUSE-Wallpapers directory not found in your repo!${NC}"
-fi
-
-# 6. CONFIGURE GNOME & GTK4
-echo -e "\n${BLUE}[6/$TOTAL_STEPS] Applying GNOME Settings & Linking GTK4...${NC}"
-
-gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
-gsettings set org.gnome.desktop.interface font-name 'Cantarell 11'
-gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
-gsettings set org.gnome.desktop.interface gtk-theme 'Skeuos-openSUSE-Dark'
-
-# Handle the Wallpaper
-TARGET_BG="$WALLPAPER_DIR/hyprland-opensuse.png"
-FALLBACK_BG="$WALLPAPER_DIR/wallpapers/tumbleweed/default-1920x1080.jpg"
-
-if [ -f "$TARGET_BG" ]; then
-    echo -e "${YELLOW}>> Applying custom Hyprland wallpaper...${NC}"
-    gsettings set org.gnome.desktop.background picture-uri "file://$TARGET_BG"
-    gsettings set org.gnome.desktop.background picture-uri-dark "file://$TARGET_BG"
-elif [ -f "$FALLBACK_BG" ]; then
-    echo -e "${YELLOW}>> Custom wallpaper not found. Applying default Tumbleweed background...${NC}"
-    gsettings set org.gnome.desktop.background picture-uri "file://$FALLBACK_BG"
-    gsettings set org.gnome.desktop.background picture-uri-dark "file://$FALLBACK_BG"
-else
-    echo -e "${YELLOW}>> WARNING: No valid wallpaper found to set. Leaving default.${NC}"
-fi
-
-echo -e "${YELLOW}>> Forcing Libadwaita (GTK4) apps to use the openSUSE theme...${NC}"
-mkdir -p ~/.config/gtk-4.0
-rm -rf ~/.config/gtk-4.0/{assets,gtk.css,gtk-dark.css}
-ln -sf ~/.themes/Skeuos-openSUSE-Dark/gtk-4.0/assets ~/.config/gtk-4.0/assets
-ln -sf ~/.themes/Skeuos-openSUSE-Dark/gtk-4.0/gtk.css ~/.config/gtk-4.0/gtk.css
-ln -sf ~/.themes/Skeuos-openSUSE-Dark/gtk-4.0/gtk-dark.css ~/.config/gtk-4.0/gtk-dark.css
-
-# 7. CONFIGURE TERMINAL PROMPT
-echo -e "\n${BLUE}[7/$TOTAL_STEPS] Applying openSUSE Terminal Styling...${NC}"
-if ! grep -q "1;32m" ~/.bashrc; then
-    echo '' >> ~/.bashrc
-    echo '# openSUSE-style terminal prompt' >> ~/.bashrc
-    echo 'export PS1="\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\]\$ "' >> ~/.bashrc
-    echo -e "${YELLOW}>> Prompt added to .bashrc${NC}"
-fi
-
-# 8. CONFIGURE PLYMOUTH BOOT SPLASH
-echo -e "\n${BLUE}[8/$TOTAL_STEPS] Installing openSUSE Boot Splash Screen...${NC}"
-PLYMOUTH_TEMP="/tmp/plymouth-opensuse"
-if [ ! -d "/usr/share/plymouth/themes/opensuse-logo" ]; then
-    echo -e "${YELLOW}>> Downloading Plymouth theme...${NC}"
-    rm -rf "$PLYMOUTH_TEMP"
-    git clone https://github.com/serhiyguryev/plymouth-theme-opensuse.git "$PLYMOUTH_TEMP"
-    sudo cp -rv "$PLYMOUTH_TEMP/opensuse-logo" /usr/share/plymouth/themes/
-fi
-
-echo -e "${YELLOW}>> Rebuilding boot files (initramfs). This takes a moment...${NC}"
-sudo plymouth-set-default-theme -R opensuse-logo
-
-if ! grep -q "splash" /boot/firmware/cmdline.txt; then
-    echo -e "${YELLOW}>> Adding 'splash' to /boot/firmware/cmdline.txt...${NC}"
-    sudo sed -i 's/$/ quiet splash/' /boot/firmware/cmdline.txt
-fi
-
-# 9. CONFIGURE LOGIN SCREEN (GDM3)
-echo -e "\n${BLUE}[9/$TOTAL_STEPS] Customizing GDM Login Screen...${NC}"
-sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /etc/os-release || true
-sudo sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="openSUSE Tumbleweed"/' /usr/lib/os-release || true
-sudo wget -qO /usr/share/pixmaps/opensuse-logo.svg https://raw.githubusercontent.com/openSUSE/branding/master/logos/geeko/geeko-color.svg || true
-
-GDM_CONF="/etc/gdm3/greeter.dconf-defaults"
-if [ -d "/etc/gdm3" ]; then
-    sudo touch "$GDM_CONF"
-    if ! grep -q "opensuse-logo.svg" "$GDM_CONF"; then
-        echo -e "${YELLOW}>> Injecting Geeko logo into GDM3...${NC}"
-        echo "" | sudo tee -a "$GDM_CONF" > /dev/null
-        echo "[org/gnome/login-screen]" | sudo tee -a "$GDM_CONF" > /dev/null
-        echo "logo='/usr/share/pixmaps/opensuse-logo.svg'" | sudo tee -a "$GDM_CONF" > /dev/null
+    if ! id "$USERNAME" &>/dev/null; then
+        useradd -m -G wheel -s /bin/bash "$USERNAME"
+        echo "$USERNAME:$HASH" | chpasswd -e
+        # Set Passwordless Sudo
+        echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$USERNAME"
+        chmod 440 "/etc/sudoers.d/$USERNAME"
     fi
+done
+
+# Restore SSH Key for erin
+if [ -d "/home/erin" ]; then
+    mkdir -p /home/erin/.ssh
+    echo "$SSH_KEY_ERIN" > /home/erin/.ssh/authorized_keys
+    chown -R erin:erin /home/erin/.ssh
+    chmod 700 /home/erin/.ssh
 fi
 
-# 10. CONFIGURE KEYBOARD BACKLIGHT
-echo -e "\n${BLUE}[10/$TOTAL_STEPS] Setting Pi 500+ Keyboard Backlight...${NC}"
-if command -v rpi-keyboard-config >/dev/null 2>&1; then
-    echo -e "${YELLOW}>> Setting to SUSE Green (Breathing)...${NC}"
-    rpi-keyboard-config preset set 0 "Breathing" --hue 89 --sat 255 --speed 100 || true
+# ==============================================================================
+# 2. SYSTEM TUNING (K8s & GNOME)
+# ==============================================================================
+echo -e "${YELLOW}>> Applying Kernel and GNOME settings...${NC}"
+
+# K8s Tuning & IPv6 Disable
+cat <<EOF > /etc/sysctl.d/90-k8s-tuning.conf
+fs.inotify.max_user_instances = 1024
+fs.inotify.max_user_watches = 524288
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+EOF
+sysctl --system
+
+# GNOME Desktop Power Settings (system-wide dconf policy — works without a display)
+mkdir -p /etc/dconf/db/local.d
+cat <<EOF > /etc/dconf/db/local.d/01-power-settings
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-type='nothing'
+idle-dim=false
+
+[org/gnome/desktop/session]
+idle-delay=uint32 0
+EOF
+dconf update
+
+# ==============================================================================
+# 3. GLOBAL BASH CUSTOMIZATION
+# ==============================================================================
+cat <<EOF > /etc/bash.bashrc.local
+alias ll='ls -la'
+alias k='kubectl'
+if [[ \$- == *i* ]]; then
+    command -v fastfetch >/dev/null 2>&1 && fastfetch
+fi
+export KUBECONFIG=/etc/rancher/rke2/rke2.yaml:/etc/rancher/k3s/k3s.yaml
+EOF
+
+# ==============================================================================
+# 4. PACKAGE INSTALLATION (Zypper)
+# ==============================================================================
+echo -e "${YELLOW}>> Installing repositories and packages...${NC}"
+zypper --gpg-auto-import-keys ref
+zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
+             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium
+
+# ==============================================================================
+# 4b. MULTIMEDIA CODECS (Packman)
+# ==============================================================================
+echo -e "${YELLOW}>> Adding Packman repo and installing media codecs...${NC}"
+zypper addrepo -cfp 90 https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Tumbleweed/ packman
+zypper --gpg-auto-import-keys ref
+# Switch multimedia packages to Packman builds (enables full codec support)
+zypper --gpg-auto-import-keys dup --from packman --allow-vendor-change -y
+zypper --gpg-auto-import-keys in -y ffmpeg gstreamer-plugins-bad gstreamer-plugins-ugly \
+             gstreamer-plugins-libav vlc
+
+# Clone repo to get assets (desktop images, StreamController defaults, etc.)
+REPO_DIR="/opt/pi500-suse-setup"
+if [ ! -d "$REPO_DIR/.git" ]; then
+    echo -e "${YELLOW}>> Cloning pi500-suse-setup repo for assets...${NC}"
+    git clone https://github.com/SUSE-Technical-Marketing/pi500-suse-setup.git "$REPO_DIR"
 else
-    echo -e "${YELLOW}>> WARNING: rpi-keyboard-config tool not found. Skipping...${NC}"
+    echo -e "${YELLOW}>> Updating pi500-suse-setup repo...${NC}"
+    git -C "$REPO_DIR" pull
+fi
+# If running via curl, SCRIPT_DIR won't have local assets — use the cloned repo
+if [ ! -d "$SCRIPT_DIR/assets" ]; then
+    SCRIPT_DIR="$REPO_DIR"
 fi
 
-# 11. SET BOOT TARGET
-echo -e "\n${BLUE}[11/$TOTAL_STEPS] Setting Default Boot Target...${NC}"
-sudo systemctl set-default graphical.target || true
+# ==============================================================================
+# 5. ARCHITECTURE-AWARE BINARIES (Kubectl, Helm, K9s)
+# ==============================================================================
+ARCH=$(uname -m)
+BIN_ARCH="amd64"
+[[ "$ARCH" == "aarch64" ]] && BIN_ARCH="arm64"
 
-# --- FINISH ---
-echo -e "\n${GREEN}======================================================${NC}"
-echo -e "${GREEN} [+] INSTALLATION COMPLETE!                           ${NC}"
-echo -e "${GREEN}======================================================${NC}"
-echo "Please reboot your Pi to load into your fully configured openSUSE environment."
+echo -e "${YELLOW}>> Downloading CLI tools for $ARCH...${NC}"
+
+# Kubectl
+K8S_VER=$(curl -L -s https://dl.k8s.io/release/stable.txt || echo "v1.30.0")
+curl -fsSL -O "https://dl.k8s.io/release/${K8S_VER}/bin/linux/${BIN_ARCH}/kubectl"
+install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl
+
+# Helm
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# K9s (with fallback for GitHub API limits)
+K9S_VER=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+if [ -z "$K9S_VER" ] || [[ "$K9S_VER" == *"rate limit"* ]]; then
+    K9S_VER="v0.32.4"
+    echo -e "${YELLOW}⚠️ GitHub API Throttled. Using fallback version $K9S_VER${NC}"
+fi
+curl -fsSL -o k9s.tar.gz "https://github.com/derailed/k9s/releases/download/${K9S_VER}/k9s_Linux_${BIN_ARCH}.tar.gz"
+tar -xzf k9s.tar.gz k9s && install -m 0755 k9s /usr/local/bin/k9s && rm k9s k9s.tar.gz
+
+# ==============================================================================
+# 6. FLATPAK & STREAMCONTROLLER RESTORE
+# ==============================================================================
+echo -e "${YELLOW}>> Configuring Flatpak and StreamController...${NC}"
+# TERM=dumb prevents flatpak's progress bar from sending terminal escape sequences
+# that get echoed as garbage when the script is piped via curl
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | cat
+flatpak install --system -y flathub com.core447.StreamController 2>&1 | cat
+
+for entry in "${USERS[@]}"; do
+    USERNAME="${entry%%:*}"
+    USER_HOME="/home/$USERNAME"
+    SC_VAR_DIR="$USER_HOME/.var/app/com.core447.StreamController"
+
+    if [ -f "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" ]; then
+        echo -e "${YELLOW}>> Restoring StreamController config for $USERNAME...${NC}"
+        mkdir -p "$SC_VAR_DIR"
+        tar -xzf "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
+        chown -R "$USERNAME:$USERNAME" "$USER_HOME/.var"
+    fi
+done
+
+# ==============================================================================
+# 7. FINAL SYSTEM CONFIG
+# ==============================================================================
+firewall-cmd --permanent --add-port=6443/tcp --quiet
+firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 --quiet
+firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 --quiet
+firewall-cmd --reload --quiet
+
+hostnamectl hostname p500
+
+echo -e "${YELLOW}✅ Setup Complete! A reboot is recommended.${NC}"
