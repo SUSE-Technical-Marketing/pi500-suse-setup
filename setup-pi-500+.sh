@@ -90,7 +90,7 @@ EOF
 echo -e "${YELLOW}>> Installing repositories and packages...${NC}"
 zypper --gpg-auto-import-keys ref
 zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
-             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak
+             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl
 
 # Clone repo to get assets (desktop images, StreamController defaults, etc.)
 REPO_DIR="/opt/pi500-suse-setup"
@@ -136,8 +136,10 @@ tar -xzf k9s.tar.gz k9s && install -m 0755 k9s /usr/local/bin/k9s && rm k9s k9s.
 # 6. FLATPAK & STREAMCONTROLLER RESTORE
 # ==============================================================================
 echo -e "${YELLOW}>> Configuring Flatpak and StreamController...${NC}"
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --system -y flathub com.core447.StreamController
+# TERM=dumb prevents flatpak's progress bar from sending terminal escape sequences
+# that get echoed as garbage when the script is piped via curl
+TERM=dumb flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+TERM=dumb flatpak install --system -y flathub com.core447.StreamController
 
 for entry in "${USERS[@]}"; do
     USERNAME="${entry%%:*}"
