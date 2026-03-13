@@ -90,7 +90,7 @@ EOF
 echo -e "${YELLOW}>> Installing repositories and packages...${NC}"
 zypper --gpg-auto-import-keys ref
 zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
-             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl
+             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium
 
 # Clone repo to get assets (desktop images, StreamController defaults, etc.)
 REPO_DIR="/opt/pi500-suse-setup"
