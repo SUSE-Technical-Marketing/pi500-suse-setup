@@ -1,42 +1,45 @@
-# Pi 500+ openSUSE-Style GNOME Setup
+# Raspberry Pi 500 Demo Station Setup
 
-This repository contains an automation script designed to transform a fresh installation of **Raspberry Pi OS "Trixie" (Debian 13)** on a **Raspberry Pi 500+** into a full GNOME workstation with an openSUSE (Gecko/Green) aesthetic.
+Automated setup script for configuring a **Raspberry Pi 500** running **openSUSE Tumbleweed** as a SUSE demo station. One curl command gets you from a fresh OS install to a fully configured demo-ready system.
 
-## 🎯 Goal
-To provide a repeatable, one-command setup for deploying a polished, green-themed GNOME desktop environment across multiple Pi 500+ units, replacing the default PIXEL/LXDE interface.
+## What It Does
 
-## 📋 Prerequisites
+- Creates user accounts (`erin`, `sles`) with passwordless sudo
+- Installs and configures SSH key access
+- Applies kernel tuning for Kubernetes workloads
+- Disables IPv6 and configures GNOME power settings (no sleep/screensaver)
+- Installs core packages: `git`, `vim`, `curl`, `fastfetch`, `chromium`, `flatpak`, and more
+- Adds the **Packman** repo and installs full multimedia codec support (H.264, MP3, AAC, etc.)
+- Downloads `kubectl`, `helm`, and `k9s` (architecture-aware, works on ARM64)
+- Installs **StreamController** via Flatpak and restores default config
+- Configures firewall rules for Kubernetes (ports 6443, pod/service CIDRs)
+- Sets hostname to `p500`
+- Clones this repo to `/opt/pi500-suse-setup` for assets (desktop images, StreamController defaults)
 
-* **Hardware:** Raspberry Pi 500+ (or Raspberry Pi 5).
-* **OS:** Raspberry Pi OS 64-bit (Trixie/Debian 13 branch).
-    * *Note: Start with "Raspberry Pi OS Lite" for the cleanest result, but the script supports the Desktop version as well.*
-* **Internet Connection:** Required for downloading packages and assets.
+## Requirements
 
-## 🚀 Quick Start
+- Raspberry Pi 500 (ARM64/aarch64)
+- Fresh install of **openSUSE Tumbleweed**
+- Internet connection
+- Run as root
 
-1.  **Open a terminal** on your fresh Pi installation.
-2.  **Clone this repository** and enter the directory:
-    ```bash
-    git clone [https://github.com/YourUsername/pi500-suse-setup.git](https://github.com/YourUsername/pi500-suse-setup.git)
-    cd pi500-suse-setup
-    ```
-3.  **Make the script executable**:
-    ```bash
-    chmod +x setup.sh
-    ```
-4.  **Run the installer**:
-    ```bash
-    ./setup.sh
-    ```
-5.  **Reboot** when prompted:
-    ```bash
-    sudo reboot
-    ```
+## Quick Start
 
-## 🛠 What This Script Does
+```bash
+curl -fsSL "https://raw.githubusercontent.com/SUSE-Technical-Marketing/pi500-suse-setup/main/setup-pi-500%2B.sh" | sudo bash
+```
 
-1.  **System Update:** Runs `apt update` and `apt full-upgrade` to ensure the Trixie base is current.
-2.  **GNOME Installation:** Installs the full `task-gnome-desktop` environment, ensuring a modern, touch-friendly, and smooth Wayland experience on the Pi 500+ hardware.
-3.  **Theming (The "SUSE" Look):**
-    * **Icons:** Installs and applies `papirus-icon-theme` (Green variant) to mimic the polished look of openSUSE.
-    * **Fonts:**
+After the script completes, reboot:
+
+```bash
+sudo reboot
+```
+
+## Repo Structure
+
+```
+.
+├── setup-pi-500+.sh              # Main setup script
+└── assets/
+    └── streamcontroller-config.tar.gz  # Default StreamController layout
+```
