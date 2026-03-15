@@ -73,8 +73,23 @@ idle-dim=false
 
 [org/gnome/desktop/session]
 idle-delay=uint32 0
+
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
+picture-uri-dark='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
+picture-options='zoom'
+
+[org/gnome/desktop/screensaver]
+picture-uri='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
 EOF
 dconf update
+
+# Copy background asset to system directory
+mkdir -p /usr/share/backgrounds
+if [ -f "$SCRIPT_DIR/assets/Brand-Awareness-Geeko-Background-17.png" ]; then
+    cp "$SCRIPT_DIR/assets/Brand-Awareness-Geeko-Background-17.png" /usr/share/backgrounds/
+    chmod 644 /usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png
+fi
 
 # ==============================================================================
 # 3. GLOBAL BASH CUSTOMIZATION
