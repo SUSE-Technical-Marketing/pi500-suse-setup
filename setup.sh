@@ -11,47 +11,81 @@ fi
 # Set directory and colors
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YELLOW='\033[1;33m'
+GREEN='\033[1;32m'
 NC='\033[0m'
 
 # ==============================================================================
-# 1. USER CONFIGURATION & SUDOERS
+# 0. ASSET REPO CLONE (if needed)
 # ==============================================================================
-# Format: "username:password_hash"
-USERS=(
-    'erin:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0'
-    'sles:$6$GIMOuTECYPYXsfJ.$EtHN2wFiAeV9oqJjJFhvCP1czEitHdrvkBCno8SxkgdYnQAXID5xR9Y7XEr7WGxyMWqPGd572VvCg5jvNFI6P0'
-)
-
-SSH_KEY_ERIN="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDrkMfTTDxPafXv+E1olBKCqu3ggaRGeitMaJ5iJHr588Bo2PcPY+xlM5iM1WITNBwUtdotxtIPVv25sijeEB4eCn4Sx/460FB9cbucGMUqZeeMZe++ibziT/5vyDQhIBwEpw3tm5qtd1rLJkdIbq6hyxbkH2lr8RKfEGA9CCCTFeX7CPHHsVx3KXoS2TDceVHEaMaNBSpT1wkUJ26WLnbjYIkeTI2tqWmS/zV2u8wE9hyWsKheXRL3P9Ams+n2t4UmjNb0Xs96hkjHbcl8Pa8dlrOOER9oINWblfbuJR28Q3vlPR/3yLC1JI9o/+Vq92aMRZiA2BMg+uC/vj18GnKwrSJQ1tEt4hnHxwTaMBjBhXuH6AJDL1LxwKMhP8iNHmke/VuIUcjtusRmpDGtVy/Jov506FAN9coWqg0DC7RojwvGaK8SSCHDV6XLZGXg5PuoyiagCRqGsp6Y5FUMtodNLEzvWe3yLS7gOLTEfoddZM9cn+u9jzQVgyqfjT9xUtc= erquill@Erins-MacBook-Pro-2.local"
-
-echo -e "${YELLOW}>> Configuring Users and Sudo access...${NC}"
-
-# Ensure wheel group exists before creating users
-groupadd -f wheel
-
-for entry in "${USERS[@]}"; do
-    USERNAME="${entry%%:*}"
-    HASH="${entry#*:}"
-
-    if ! id "$USERNAME" &>/dev/null; then
-        useradd -m -G wheel -s /bin/bash "$USERNAME"
-        echo "$USERNAME:$HASH" | chpasswd -e
-        # Set Passwordless Sudo
-        echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$USERNAME"
-        chmod 440 "/etc/sudoers.d/$USERNAME"
+OUTPUT_FOLDER="/opt/pi500-suse-setup"
+if [ ! -d "$OUTPUT_FOLDER" ]; then
+    echo -e "${YELLOW}>> Cloning asset repository...${NC}"
+    GIT_REPO_NAME="pi500-suse-setup"
+    GIT_REVISION="refs/heads/main"
+    GIT_VERSION="${GIT_REVISION#refs/heads/}"
+    curl -fSsL -o ${GIT_REPO_NAME}.tar.gz https://github.com/SUSE-Technical-Marketing/${GIT_REPO_NAME}/archive/${GIT_REVISION}.tar.gz
+    if [ $? -ne 0 ]; then
+        fatal "Failed to download ${GIT_REPO_NAME} from ${GIT_REVISION}"
     fi
-done
+    mkdir -p ${OUTPUT_FOLDER}
+    tar -xzf  ${GIT_REPO_NAME}.tar.gz -C ${OUTPUT_FOLDER} --strip-components=1
+    echo -e "${GREEN}>> Repository cloned successfully.${NC}"
+else
+     echo -e "${GREEN}>> Asset repository already exists. Skipping clone...${NC}"
+fi
 
-# Restore SSH Key for erin
-if [ -d "/home/erin" ]; then
-    mkdir -p /home/erin/.ssh
-    echo "$SSH_KEY_ERIN" > /home/erin/.ssh/authorized_keys
-    chown -R erin:erin /home/erin/.ssh
-    chmod 700 /home/erin/.ssh
+if [ ! -d "$SCRIPT_DIR/assets" ] || [ ! -f "$SCRIPT_DIR/users.yaml" ]; then
+    echo -e "${YELLOW}⚠️  Local assets not found. Using cloned repository for assets...${NC}"
+    SCRIPT_DIR="$OUTPUT_FOLDER"
 fi
 
 # ==============================================================================
-# 2. SYSTEM TUNING (K8s & GNOME)
+# 1. PACKAGE INSTALLATION (Zypper)
+# ==============================================================================
+echo -e "${YELLOW}>> Installing repositories and packages...${NC}"
+zypper --gpg-auto-import-keys ref
+zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
+             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium yq
+echo -e "${GREEN}>> Package installation complete.${NC}"
+
+# ==============================================================================
+# 2. USER CONFIGURATION & SUDOERS
+# ==============================================================================
+# Format: "username:password_hash"
+
+echo -e "${YELLOW}>> Configuring Users and Sudo access...${NC}"
+USER_YAML="$SCRIPT_DIR/users.yaml"
+if [ ! -f "$USER_YAML" ]; then
+    echo -e "${YELLOW}⚠️  users.yaml not found. Skipping user configuration...${NC}"
+else
+    # Ensure wheel group exists before creating users
+    groupadd -f wheel
+
+    # Iterate over users defined in users.yaml
+    while IFS=: read -r USER HASH; do
+        echo -e "${YELLOW}Configuring user: $USER${NC}"
+        if ! id "$USER" &>/dev/null; then
+            useradd -m -G wheel -s /bin/bash "$USER"
+            echo "$USER:$HASH" | chpasswd -e
+            # Set Passwordless Sudo
+            echo "$USER ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$USER"
+            chmod 440 "/etc/sudoers.d/$USER"
+        fi
+
+        # if the user has an SSH key, add it to their authorized_keys
+        SSH_KEY=$(yq e ".users[] | select(.name == \"$USER\") | .ssh_key" $USER_YAML)
+        if [ -n "$SSH_KEY" ] && [ "$SSH_KEY" != "null" ]; then
+            mkdir -p "/home/$USER/.ssh"
+            echo "$SSH_KEY" > "/home/$USER/.ssh/authorized_keys"
+            chown -R "$USER:$USER" "/home/$USER/.ssh"
+            chmod 700 "/home/$USER/.ssh"
+        fi
+    done < <(yq e '.users[] | "\(.name):\(.password)"' "$USER_YAML")
+fi
+echo -e "${GREEN}>> User configuration complete.${NC}"
+
+# ==============================================================================
+# 3. SYSTEM TUNING (K8s & GNOME)
 # ==============================================================================
 echo -e "${YELLOW}>> Applying Kernel and GNOME settings...${NC}"
 
@@ -92,7 +126,7 @@ if [ -f "$SCRIPT_DIR/assets/Brand-Awareness-Geeko-Background-17.png" ]; then
 fi
 
 # ==============================================================================
-# 3. GLOBAL BASH CUSTOMIZATION
+# 4. GLOBAL BASH CUSTOMIZATION
 # ==============================================================================
 cat <<EOF > /etc/bash.bashrc.local
 alias ll='ls -la'
@@ -104,15 +138,7 @@ export KUBECONFIG=/etc/rancher/rke2/rke2.yaml:/etc/rancher/k3s/k3s.yaml
 EOF
 
 # ==============================================================================
-# 4. PACKAGE INSTALLATION (Zypper)
-# ==============================================================================
-echo -e "${YELLOW}>> Installing repositories and packages...${NC}"
-zypper --gpg-auto-import-keys ref
-zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
-             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium
-
-# ==============================================================================
-# 4b. VS CODE (Microsoft repo)
+# 4a. VS CODE (Microsoft repo)
 # ==============================================================================
 echo -e "${YELLOW}>> Installing VS Code...${NC}"
 rpm --import https://packages.microsoft.com/keys/microsoft.asc
@@ -121,7 +147,7 @@ zypper --gpg-auto-import-keys ref
 zypper --gpg-auto-import-keys in -y code
 
 # ==============================================================================
-# 4c. MULTIMEDIA CODECS (Packman)
+# 4b. MULTIMEDIA CODECS (Packman)
 # ==============================================================================
 echo -e "${YELLOW}>> Adding Packman repo and installing media codecs...${NC}"
 zypper addrepo -cfp 90 https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Tumbleweed/ packman
@@ -180,18 +206,17 @@ echo -e "${YELLOW}>> Configuring Flatpak and StreamController...${NC}"
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | cat
 flatpak install --system -y flathub com.core447.StreamController 2>&1 | cat
 
-for entry in "${USERS[@]}"; do
-    USERNAME="${entry%%:*}"
-    USER_HOME="/home/$USERNAME"
+while IFS= read -r USER; do
+    USER_HOME="/home/$USER"
     SC_VAR_DIR="$USER_HOME/.var/app/com.core447.StreamController"
 
     if [ -f "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" ]; then
-        echo -e "${YELLOW}>> Restoring StreamController config for $USERNAME...${NC}"
+        echo -e "${YELLOW}>> Restoring StreamController config for $USER...${NC}"
         mkdir -p "$SC_VAR_DIR"
         tar -xzf "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
-        chown -R "$USERNAME:$USERNAME" "$USER_HOME/.var"
+        chown -R "$USER:$USER" "$USER_HOME/.var"
     fi
-done
+done < <(yq e '.users[].name' users.yaml)
 
 # ==============================================================================
 # 7. FINAL SYSTEM CONFIG
