@@ -2,6 +2,7 @@
 
 # --- openSUSE Raspberry Pi / StreamController Setup ---
 # Designed for openSUSE Tumbleweed on a Raspberry Pi (ARM64)
+# Usage: curl -sL https://raw.githubusercontent.com/SUSE-Technical-Marketing/pi500-suse-setup/main/setup.sh | GIT_REVISION="refs/heads/main" sudo -E bash
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root (sudo)"
@@ -17,27 +18,28 @@ NC='\033[0m'
 # ==============================================================================
 # 0. ASSET REPO CLONE (if needed)
 # ==============================================================================
-OUTPUT_FOLDER="/opt/pi500-suse-setup"
-if [ ! -d "$OUTPUT_FOLDER" ]; then
+if [ ! -d "$SCRIPT_DIR/assets" ]; then
+    echo -e "${YELLOW}⚠️  Local assets not found. Using cloned repository for assets...${NC}"
+    SETUP_FOLDER="/opt/pi500-suse-setup"
+    mkdir -p ${SETUP_FOLDER}
     echo -e "${YELLOW}>> Cloning asset repository...${NC}"
     GIT_REPO_NAME="pi500-suse-setup"
-    GIT_REVISION="refs/heads/main"
+    GIT_REVISION=${GIT_REVISION:-'refs/heads/main'}
     GIT_VERSION="${GIT_REVISION#refs/heads/}"
     curl -fSsL -o ${GIT_REPO_NAME}.tar.gz https://github.com/SUSE-Technical-Marketing/${GIT_REPO_NAME}/archive/${GIT_REVISION}.tar.gz
     if [ $? -ne 0 ]; then
         fatal "Failed to download ${GIT_REPO_NAME} from ${GIT_REVISION}"
     fi
-    mkdir -p ${OUTPUT_FOLDER}
-    tar -xzf  ${GIT_REPO_NAME}.tar.gz -C ${OUTPUT_FOLDER} --strip-components=1
+
+    tar -xzf  ${GIT_REPO_NAME}.tar.gz -C ${SETUP_FOLDER} --strip-components=1
     echo -e "${GREEN}>> Repository cloned successfully.${NC}"
+
+    SCRIPT_DIR="$SETUP_FOLDER"
 else
-     echo -e "${GREEN}>> Asset repository already exists. Skipping clone...${NC}"
+    echo -e "${GREEN}>> Local assets found. Using existing files...${NC}"
 fi
 
-if [ ! -d "$SCRIPT_DIR/assets" ] || [ ! -f "$SCRIPT_DIR/users.yaml" ]; then
-    echo -e "${YELLOW}⚠️  Local assets not found. Using cloned repository for assets...${NC}"
-    SCRIPT_DIR="$OUTPUT_FOLDER"
-fi
+ASSET_DIR="$SCRIPT_DIR/assets"
 
 # ==============================================================================
 # 1. PACKAGE INSTALLATION (Zypper)
@@ -54,7 +56,7 @@ echo -e "${GREEN}>> Package installation complete.${NC}"
 # Format: "username:password_hash"
 
 echo -e "${YELLOW}>> Configuring Users and Sudo access...${NC}"
-USER_YAML="$SCRIPT_DIR/users.yaml"
+USER_YAML="$ASSET_DIR/users.yaml"
 if [ ! -f "$USER_YAML" ]; then
     echo -e "${YELLOW}⚠️  users.yaml not found. Skipping user configuration...${NC}"
 else
@@ -120,8 +122,8 @@ dconf update
 
 # Copy background asset to system directory
 mkdir -p /usr/share/backgrounds
-if [ -f "$SCRIPT_DIR/assets/Brand-Awareness-Geeko-Background-17.png" ]; then
-    cp "$SCRIPT_DIR/assets/Brand-Awareness-Geeko-Background-17.png" /usr/share/backgrounds/
+if [ -f "$ASSET_DIR/Brand-Awareness-Geeko-Background-17.png" ]; then
+    cp "$ASSET_DIR/Brand-Awareness-Geeko-Background-17.png" /usr/share/backgrounds/
     chmod 644 /usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png
 fi
 
@@ -196,10 +198,10 @@ while IFS= read -r USER; do
     USER_HOME="/home/$USER"
     SC_VAR_DIR="$USER_HOME/.var/app/com.core447.StreamController"
 
-    if [ -f "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" ]; then
+    if [ -f "$ASSET_DIR/streamcontroller-config.tar.gz" ]; then
         echo -e "${YELLOW}>> Restoring StreamController config for $USER...${NC}"
         mkdir -p "$SC_VAR_DIR"
-        tar -xzf "$SCRIPT_DIR/assets/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
+        tar -xzf "$ASSET_DIR/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
         chown -R "$USER:$USER" "$USER_HOME/.var"
     fi
 done < <(yq e '.users[].name' $USER_YAML)
