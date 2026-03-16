@@ -106,6 +106,7 @@ cat <<EOF > /etc/dconf/db/local.d/01-power-settings
 [org/gnome/settings-daemon/plugins/power]
 sleep-inactive-ac-type='nothing'
 idle-dim=false
+power-button-action='interactive'
 
 [org/gnome/desktop/session]
 idle-delay=uint32 0
@@ -119,6 +120,12 @@ picture-options='zoom'
 picture-uri='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
 EOF
 dconf update
+
+# Create the dconf profile to ensure system settings are applied for all users
+cat <<EOF > /etc/dconf/profile/user
+user-db:user
+system-db:local
+EOF
 
 # Copy background asset to system directory
 mkdir -p /usr/share/backgrounds
