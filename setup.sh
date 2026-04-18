@@ -74,14 +74,19 @@ else
             chmod 440 "/etc/sudoers.d/$USER"
         fi
 
-        # if the user has an SSH key, add it to their authorized_keys
-        SSH_KEY=$(yq e ".users[] | select(.name == \"$USER\") | .ssh_key" $USER_YAML)
-        if [ -n "$SSH_KEY" ] && [ "$SSH_KEY" != "null" ]; then
-            mkdir -p "/home/$USER/.ssh"
-            echo "$SSH_KEY" > "/home/$USER/.ssh/authorized_keys"
-            chown -R "$USER:$USER" "/home/$USER/.ssh"
-            chmod 700 "/home/$USER/.ssh"
-        fi
+        mkdir -p "/home/$USER/.ssh"
+        touch "/home/$USER/.ssh/authorized_keys"
+        chown -R "$USER:$USER" "/home/$USER/.ssh"
+        chmod 700 "/home/$USER/.ssh"
+
+        # Add SSH keys to authorized_keys (supports both single ssh_key and ssh_keys array)
+        yq e ".users[] | select(.name == \"$USER\") | .ssh_key // empty, .ssh_keys[]? // empty" "$USER_YAML" | while read -r KEY; do
+            if [ -n "$KEY" ] && ! grep -qF "$KEY" "/home/$USER/.ssh/authorized_keys"; then
+                echo "$KEY" >> "/home/$USER/.ssh/authorized_keys"
+                echo -e "${GREEN}  Added SSH key for $USER${NC}"
+            fi
+        done
+        chmod 600 "/home/$USER/.ssh/authorized_keys"
     done < <(yq e '.users[] | "\(.name):\(.password)"' "$USER_YAML")
 fi
 echo -e "${GREEN}>> User configuration complete.${NC}"
