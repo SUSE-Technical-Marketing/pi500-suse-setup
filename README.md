@@ -4,7 +4,7 @@ Automated setup script for configuring a **Raspberry Pi 500** running **openSUSE
 
 ## What It Does
 
-- Creates user accounts (`erin`, `sles`) with passwordless sudo
+- Creates user accounts (`suse`) with passwordless sudo
 - Installs and configures SSH key access
 - Applies kernel tuning for Kubernetes workloads
 - Disables IPv6 and configures GNOME power settings (no sleep/screensaver)

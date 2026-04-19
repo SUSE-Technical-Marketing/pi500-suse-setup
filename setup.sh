@@ -15,6 +15,8 @@ YELLOW='\033[1;33m'
 GREEN='\033[1;32m'
 NC='\033[0m'
 
+install_streamcontroller=0
+
 # ==============================================================================
 # 0. ASSET REPO CLONE (if needed)
 # ==============================================================================
@@ -204,19 +206,22 @@ echo -e "${YELLOW}>> Configuring Flatpak and StreamController...${NC}"
 # TERM=dumb prevents flatpak's progress bar from sending terminal escape sequences
 # that get echoed as garbage when the script is piped via curl
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | cat
-flatpak install --system -y flathub com.core447.StreamController 2>&1 | cat
+if [ $install_streamcontroller -eq 1 ]; then
+    echo -e "${YELLOW}>> Installing StreamController from Flathub...${NC}"
+    flatpak install --system -y flathub com.core447.StreamController 2>&1 | cat
 
-while IFS= read -r USER; do
-    USER_HOME="/home/$USER"
-    SC_VAR_DIR="$USER_HOME/.var/app/com.core447.StreamController"
+    while IFS= read -r USER; do
+        USER_HOME="/home/$USER"
+        SC_VAR_DIR="$USER_HOME/.var/app/com.core447.StreamController"
 
-    if [ -f "$ASSET_DIR/streamcontroller-config.tar.gz" ]; then
-        echo -e "${YELLOW}>> Restoring StreamController config for $USER...${NC}"
-        mkdir -p "$SC_VAR_DIR"
-        tar -xzf "$ASSET_DIR/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
-        chown -R "$USER:$USER" "$USER_HOME/.var"
-    fi
-done < <(yq e '.users[].name' $USER_YAML)
+        if [ -f "$ASSET_DIR/streamcontroller-config.tar.gz" ]; then
+            echo -e "${YELLOW}>> Restoring StreamController config for $USER...${NC}"
+            mkdir -p "$SC_VAR_DIR"
+            tar -xzf "$ASSET_DIR/streamcontroller-config.tar.gz" -C "$SC_VAR_DIR/"
+            chown -R "$USER:$USER" "$USER_HOME/.var"
+        fi
+    done < <(yq e '.users[].name' $USER_YAML)
+fi
 
 # ==============================================================================
 # 7. FINAL SYSTEM CONFIG
