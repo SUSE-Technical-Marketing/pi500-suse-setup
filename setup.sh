@@ -16,6 +16,7 @@ GREEN='\033[1;32m'
 NC='\033[0m'
 
 install_streamcontroller=0
+background_image="Brand-Awareness-Geeko-Background-17.png"
 
 # ==============================================================================
 # 0. ASSET REPO CLONE (if needed)
@@ -119,12 +120,12 @@ power-button-action='interactive'
 idle-delay=uint32 0
 
 [org/gnome/desktop/background]
-picture-uri='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
-picture-uri-dark='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
+picture-uri="file:///usr/share/backgrounds/$background_image"
+picture-uri-dark="file:///usr/share/backgrounds/$background_image"
 picture-options='zoom'
 
 [org/gnome/desktop/screensaver]
-picture-uri='file:///usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png'
+picture-uri="file:///usr/share/backgrounds/$background_image"
 EOF
 dconf update
 
@@ -136,10 +137,12 @@ EOF
 
 # Copy background asset to system directory
 mkdir -p /usr/share/backgrounds
-if [ -f "$ASSET_DIR/Brand-Awareness-Geeko-Background-17.png" ]; then
-    cp "$ASSET_DIR/Brand-Awareness-Geeko-Background-17.png" /usr/share/backgrounds/
-    chmod 644 /usr/share/backgrounds/Brand-Awareness-Geeko-Background-17.png
-fi
+for img in "$ASSET_DIR"/backgrounds/*.{png,jpg,jpeg}; do
+    if [ -f "$img" ]; then
+        cp "$img" /usr/share/backgrounds/
+        chmod 644 "/usr/share/backgrounds/$(basename "$img")"
+    fi
+done
 
 # ==============================================================================
 # 4. GLOBAL BASH CUSTOMIZATION
