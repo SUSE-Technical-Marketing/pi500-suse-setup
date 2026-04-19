@@ -16,7 +16,7 @@ GREEN='\033[1;32m'
 NC='\033[0m'
 
 install_streamcontroller=0
-background_image="Brand-Awareness-Geeko-Background-17.png"
+background_image="S26_SafetySlide-SUSECON.png"
 
 # ==============================================================================
 # 0. ASSET REPO CLONE (if needed)
