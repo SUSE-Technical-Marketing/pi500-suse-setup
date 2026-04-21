@@ -209,7 +209,7 @@ EOF
 echo -e "${YELLOW}>> Configuring Flatpak and StreamController...${NC}"
 # TERM=dumb prevents flatpak's progress bar from sending terminal escape sequences
 # that get echoed as garbage when the script is piped via curl
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | cat
+# flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | cat
 if [ $install_streamcontroller -eq 1 ]; then
     echo -e "${YELLOW}>> Installing StreamController from Flathub...${NC}"
     flatpak install --system -y flathub com.core447.StreamController 2>&1 | cat
