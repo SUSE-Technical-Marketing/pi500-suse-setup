@@ -49,8 +49,9 @@ ASSET_DIR="$SCRIPT_DIR/assets"
 # ==============================================================================
 echo -e "${YELLOW}>> Installing repositories and packages...${NC}"
 zypper --gpg-auto-import-keys ref
-zypper --gpg-auto-import-keys in -y fastfetch curl git bash-completion vim nano iputils wget \
-             mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium yq
+zypper --gpg-auto-import-keys in fastfetch curl git bash-completion vim nano iputils
+# wget \
+            #  mc tree bat btop open-iscsi cryptsetup qemu-guest-agent flatpak openssl chromium yq
 echo -e "${GREEN}>> Package installation complete.${NC}"
 
 # ==============================================================================
