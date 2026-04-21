@@ -159,48 +159,48 @@ EOF
 # ==============================================================================
 # 4a. VS CODE (Microsoft repo)
 # ==============================================================================
-echo -e "${YELLOW}>> Installing VS Code...${NC}"
-rpm --import https://packages.microsoft.com/keys/microsoft.asc
-zypper addrepo https://packages.microsoft.com/yumrepos/vscode vscode
-zypper --gpg-auto-import-keys ref
-zypper --gpg-auto-import-keys in -y code
+# echo -e "${YELLOW}>> Installing VS Code...${NC}"
+# rpm --import https://packages.microsoft.com/keys/microsoft.asc
+# zypper addrepo https://packages.microsoft.com/yumrepos/vscode vscode
+# zypper --gpg-auto-import-keys ref
+# zypper --gpg-auto-import-keys in -y code
 
-# ==============================================================================
-# 4b. MULTIMEDIA CODECS (Packman)
-# ==============================================================================
-echo -e "${YELLOW}>> Adding Packman repo and installing media codecs...${NC}"
-zypper addrepo -cfp 90 https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Tumbleweed/ packman
-zypper --gpg-auto-import-keys ref
-# Switch multimedia packages to Packman builds (enables full codec support)
-zypper --gpg-auto-import-keys dup --from packman --allow-vendor-change -y
-zypper --gpg-auto-import-keys in -y ffmpeg gstreamer-plugins-bad gstreamer-plugins-ugly \
-             gstreamer-plugins-libav vlc
+# # ==============================================================================
+# # 4b. MULTIMEDIA CODECS (Packman)
+# # ==============================================================================
+# echo -e "${YELLOW}>> Adding Packman repo and installing media codecs...${NC}"
+# zypper addrepo -cfp 90 https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Tumbleweed/ packman
+# zypper --gpg-auto-import-keys ref
+# # Switch multimedia packages to Packman builds (enables full codec support)
+# zypper --gpg-auto-import-keys dup --from packman --allow-vendor-change -y
+# zypper --gpg-auto-import-keys in -y ffmpeg gstreamer-plugins-bad gstreamer-plugins-ugly \
+#              gstreamer-plugins-libav vlc
 
-# ==============================================================================
-# 5. ARCHITECTURE-AWARE BINARIES (Kubectl, Helm, K9s)
-# ==============================================================================
-ARCH=$(uname -m)
-BIN_ARCH="amd64"
-[[ "$ARCH" == "aarch64" ]] && BIN_ARCH="arm64"
+# # ==============================================================================
+# # 5. ARCHITECTURE-AWARE BINARIES (Kubectl, Helm, K9s)
+# # ==============================================================================
+# ARCH=$(uname -m)
+# BIN_ARCH="amd64"
+# [[ "$ARCH" == "aarch64" ]] && BIN_ARCH="arm64"
 
-echo -e "${YELLOW}>> Downloading CLI tools for $ARCH...${NC}"
+# echo -e "${YELLOW}>> Downloading CLI tools for $ARCH...${NC}"
 
-# Kubectl
-K8S_VER=$(curl -L -s https://dl.k8s.io/release/stable.txt || echo "v1.30.0")
-curl -fsSL -O "https://dl.k8s.io/release/${K8S_VER}/bin/linux/${BIN_ARCH}/kubectl"
-install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl
+# # Kubectl
+# K8S_VER=$(curl -L -s https://dl.k8s.io/release/stable.txt || echo "v1.30.0")
+# curl -fsSL -O "https://dl.k8s.io/release/${K8S_VER}/bin/linux/${BIN_ARCH}/kubectl"
+# install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl
 
-# Helm
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# # Helm
+# curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# K9s (with fallback for GitHub API limits)
-K9S_VER=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-if [ -z "$K9S_VER" ] || [[ "$K9S_VER" == *"rate limit"* ]]; then
-    K9S_VER="v0.32.4"
-    echo -e "${YELLOW}⚠️ GitHub API Throttled. Using fallback version $K9S_VER${NC}"
-fi
-curl -fsSL -o k9s.tar.gz "https://github.com/derailed/k9s/releases/download/${K9S_VER}/k9s_Linux_${BIN_ARCH}.tar.gz"
-tar -xzf k9s.tar.gz k9s && install -m 0755 k9s /usr/local/bin/k9s && rm k9s k9s.tar.gz
+# # K9s (with fallback for GitHub API limits)
+# K9S_VER=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+# if [ -z "$K9S_VER" ] || [[ "$K9S_VER" == *"rate limit"* ]]; then
+#     K9S_VER="v0.32.4"
+#     echo -e "${YELLOW}⚠️ GitHub API Throttled. Using fallback version $K9S_VER${NC}"
+# fi
+# curl -fsSL -o k9s.tar.gz "https://github.com/derailed/k9s/releases/download/${K9S_VER}/k9s_Linux_${BIN_ARCH}.tar.gz"
+# tar -xzf k9s.tar.gz k9s && install -m 0755 k9s /usr/local/bin/k9s && rm k9s k9s.tar.gz
 
 # ==============================================================================
 # 6. FLATPAK & STREAMCONTROLLER RESTORE
